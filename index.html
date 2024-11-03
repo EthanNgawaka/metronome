@@ -31,7 +31,6 @@
 
 <body>
 	<script>
-		const subjectID = 0;
 		let TOTAL_NUM_OF_TRIALS = 420;
 		let trialNum = 0; // total num
 		let trialCount = 0; // num of consecutive trials ie 20th will be right arrow idk how to explain lmao
@@ -47,6 +46,7 @@
 		let num_of_practice_trials = 30;
 		let pause = false;
 		let tick_timeoutid = null;
+		let pauses = 0;
 		let data = {
 			"subject": [],
 			"trial": [],
@@ -65,6 +65,8 @@
 				console.log("done");
 			}
 		});
+		const subjectID = jsPsych.randomization.randomID(10); // eventually replaced by qualtrics input
+		console.log("subjectID: " + subjectID);
 
 		function save_data(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses){
 			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
@@ -213,7 +215,7 @@
 			return "<p>" + probe_reasons[probe_type] + probe_stimulus;
 		}
 
-		let debug = true;
+		let debug = false;
 
 		if(debug){
 			trialTarget = 10;
@@ -318,6 +320,7 @@
 			}
 
 			// data.response == null
+			misses += 1;
 			probe_type = "Miss (Normal)";
 			return;
 		}
@@ -340,6 +343,7 @@
 				choices: ["p"],
 				on_start: function(){
 					clearTimeout(tick_timeoutid);
+					pauses ++;
 				},
 				on_finish: function(data) {
 					probe_type = "Pause";
@@ -425,7 +429,7 @@
 		}
 
 		function update_trial_count(){
-			if(should_do_probe() || pause){
+			if(should_do_probe() || pause || (misses%3 == 0 && main_response==null)){
 				trialCount = 0;
 				pause = false;
 			}
@@ -461,7 +465,7 @@
 			}
 		}
 		let practice = {
-			timeline: [create_main_trial(), create_pad_trial(), create_probe_trial(), create_pause_trial()],
+			timeline: [create_main_trial(), create_pad_trial(), create_probe_trial(), create_pause_trial(), create_miss_trial()],
 			loop_function: function(){
 				// dont bother saving data
 				update_trial_count();
@@ -479,6 +483,7 @@
 				trialNum = 0;
 				trialCount = 0;
 				points = 0;
+				misses = 0;
 			}
 		}
 		let intro_node = {
@@ -492,8 +497,25 @@
 				return get_last_trial_data().response == "arrowright";
 			}
 		}
+		function create_miss_trial(){
+			let error_trial = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: "<p>You have missed a few trials!<br>Remember, the main experiment is about 10 minutes long. <br><br>Tap <strong>[Left Arrow]</strong> in time with the beat<br>Tap <strong>[Right Arrow]</strong> every 20th beat<br>Tap <strong>[Up Arrow]</strong> if you lose count<br><br>If it was just a mistake, that is okay. We expect that participants will miss some trials.<br>That said, if you miss too many we will not be able to use your data so please try to keep the beat and count.<br><br>We have reset the count so start counting the next trial at 1.<br><br>When you are ready to continue, press <strong>[Left Arrow]</strong></p>",
+				choices: ["arrowleft"],
+				on_start: function(){
+					console.log(misses);
+				},
+				on_finish: function() {
+				},
+			}
+
+			return { // conditional node
+				timeline: [error_trial, add_countdown("resuming in 3..."), add_countdown("resuming in 2..."), add_countdown("resuming in 1..."), add_countdown("Go!")],
+				conditional_function: function(){ return misses%3 == 0 && main_response == null; },
+			}
+		}
 		let trial_node = { // this is seperate so that we can conditionally loop it
-			timeline: [create_main_trial(), create_pad_trial(), create_probe_trial(), create_pause_trial()],
+			timeline: [create_main_trial(), create_pad_trial(), create_probe_trial(), create_pause_trial(), create_miss_trial()],
 			loop_function: function(){
 				let score = (main_rt - lag_time);
 				let index = get_index_from_rt(main_rt);
