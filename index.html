@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="js/external/jspsych.js"></script>
+    <script src="js/external/plugin-preload.js"></script>
+    <script src="js/external/plugin-html-keyboard-response.js"></script>
+	<script src="https://unpkg.com/@jspsych/plugin-instructions@1.1.4"></script>
+
+    <link rel="stylesheet" href="css/jspsych.css">
+    <style>
+        p {
+            max-width: 750px;
+            text-align: left;
+			color:white;
+        }
+
+		body{
+			background-color:black;
+		}
+		
+		strong{
+			color:white;
+			font-weight:bold;
+			text-decoration: underline;
+		}
+
+    </style>
+</head>
+
+<body>
+	<script>
+		const subjectID = 0;
+		let TOTAL_NUM_OF_TRIALS = 420;
+		let trialNum = 0; // total num
+		let trialCount = 0; // num of consecutive trials ie 20th will be right arrow idk how to explain lmao
+		let trialTarget = 20;
+		let misses = 0;
+		let key_pressed_flag = false;
+		let lag_time = 650; // idk why i named it lag time its a poor name its actually the time (ms) when the tick is played
+		let missLimit = 30;
+		let probe_type = "";
+		let points = 0;
+		let main_response = null;
+		let main_rt = null;
+		let num_of_practice_trials = 30;
+		let pause = false;
+
+		// Miss (Caught) = 10
+		// Incorrect (Limit) = 10
+		// Incorrect (Normal) = -1
+		// Incorrect (Target) = -2
+		// Correct (Normal) = -2
+		// Correct (Target) = -3
+		// Mind-Wandering = 1
+		// Environmental = 2
+		// Intentional = 3
+		// Accidental = 4
+		// Unclear = 5
+		// Other reason = 6
+		let task_focus = "";
+
+		let practice_trials_over_HTML = `<p>
+				The practice trials are now over.<br><br>
+				If you would like to review the instructions and redo the practice trials,<br>press <strong>[Right Arrow]</strong><br><br>
+				The main experiment will last about 10 minutes.<br>
+				If you are ready to begin the main 10 minute experiment, press <strong>[Left Arrow]</strong>.
+			</p>`;
+		let instructionHTML = [
+			`<p>
+			For this experiment, you will hear a metronome sound<br>
+			played at a periodic rate via your headphones / speakers.<br>
+			Your task is to press the <strong>[Left Arrow]</strong> in time with the sound.<br>
+			Your goal is to press the <strong>[Left Arrow]</strong> EXACTLY when the tick sound is played.<br><br>
+			By pressing <Left Arrow> in time with the tick, you will gain points based on how close you are to the beat.<br>
+			The points you gain are denoted by a colored cross in the center of the screen.
+			</p>`,
+			`<p>
+			The possible colors are:<br>
+			- Magenta: Perfect<br>
+			- Green: Good<br>
+			- Yellow: Ok<br>
+			- Orange: Moderate<br>
+			- Red: Bad<br><br><br>
+			In addition to keeping in time with the beat, you must<br>
+			count each tick, pressing <strong>[Right Arrow]</strong> instead of the <strong>[Left Arrow]</strong> on the 20th beat.<br><br>
+			Pressing the incorrect button on, during, or after the 20th beat<br>
+			will result in a loss of points.
+			</p>`,
+			`<p>
+			Simple right?<br>
+			Tap <strong>[Left Arrow]</strong> in time with the metronome.<br>
+			Tap <strong>[Right Arrow]</strong> every 20th beat.<br><br>
+			If you miss the 20th beat, we will catch you, ask a few questions, and you will lose some points.<br><br>
+			When counting the beats, if you think you've lost count<br>
+			you can 'catch yourself' by pressing the <strong>[Up Arrow]</strong><br>
+			This will reset the count to 1 and you will not lose any points.<br><br>
+			Remember, since you lose no points when catching yourself,<br>
+			it is ALWAYS better to catch yourself rather than waiting for us to catch you.
+			</p>`,
+			`<p>
+			Press <strong>[S]</strong> now to play the metronome sound used during the experiment.<br>
+			Adjust your computers volume to make sure it's at a comfortable level.<br>
+			It should be clearly audible but not so loud that it's unpleasant.<br><br>
+			If you get distracted by something in your environment, you can press <strong>[P]</strong> to pause the experiment and remove the distraction or change environments.<br><br>
+			Unpausing resets the count to 1 (Similar to self catching) and you do NOT lose points.<br>
+			Keep in mind that <strong>if you pause more than THREE times,<br>
+			we will be unable to use your data</strong>, although you will still receive credit for participation.
+			</p>`,
+			`<p>
+			In summary:<br>
+			- Press <strong>[Left Arrow]</strong> in time with the beat.<br>
+			- Press <strong>[Right Arrow]</strong> on the 20th beat.<br>
+			- Press <strong>[Up Arrow]</strong> to catch yourself if you lose count.<br>
+			<br><br>
+			Feel free to review the instructions by using the buttons below.<br>
+			<br>
+			<strong>DO NOT CONTINUE UNLESS THE INSTRUCTIONS ARE CLEAR</strong><br><br>
+			Press the <strong>[Next >]</strong> button to begin the practice trials.
+			</p>`,
+			
+		]
+
+		let probe_reasons = {
+			"Miss (Caught)" : "Thanks for self-catching! You keep the points you earned!",
+			"Incorrect (Limit)" : "You passed the 20th trial without hitting the correct button.<br>The 20th beat was several trials ago, so we caught you.<br>As a result you have lost points.",
+			"Incorrect (Target)" : "It looks like you tapped the wrong key! That was not the 20th beat! As a result, you have lost some points.",
+		}
+
+		let probe_stimulus =
+			`<br>
+				Which of the following best characterizes why you lost count:<br>
+				<br>
+				(1) Mind-Wandering:<br>
+				I got distracted by my own internal thoughts, but I didn't notice in time to self-catch<br>
+				<br>
+				(2) Environmental:<br>
+				I got distracted by something in my environment, but I didn't notice in time to self-catch<br>
+				<br>
+				(3) Intentional:<br>
+				I was not actually trying this time (Be honest! This answer is legitimate!)<br>
+				<br>
+				(4) Accidental:<br>
+				I was counting properly but my finger accidentally hit the wrong key<br>
+				<br>
+				(5) Unclear:<br>
+				I thought I was counting correctly. I was not aware of any mind-wandering or other distractions<br>
+				<br>
+				(6) Other Reason:<br>
+				(You can elaborate after the experiment)<br>
+				<br>
+				Please use the keyboard to select the response option that best describes your mental state when tapping the wrong key.
+			</p>`
+		function get_probe_stimulus(){
+			return "<p>" + probe_reasons[probe_type] + probe_stimulus;
+		}
+
+		let debug = true;
+
+		if(debug){
+			trialTarget = 10;
+			missLimit = 15;
+			TOTAL_NUM_OF_TRIALS = 10;
+			num_of_practice_trials = 0;
+		}
+
+		let styling = [
+			"font-weight:bold;font-size:200px;color:red;",
+			"font-weight:bold;font-size:200px;color:orange;",
+			"font-weight:bold;font-size:200px;color:yellow;",
+			"font-weight:bold;font-size:200px;color:green;",
+			"font-weight:bold;font-size:200px;color:lightgreen;",
+			"font-weight:bold;font-size:200px;color:cyan;",
+			"font-weight:bold;font-size:200px;color:magenta;",
+		];
+
+		function play_metronome_tick() {
+			const audio = new Audio('./sounds/metronomeMono.mp3');
+			audio.play();
+		}
+
+		const timeline = [];
+
+		function add_countdown(n){
+			return {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: '<p>'+n+'<p>',
+				response_ends_trial: false,
+				trial_duration:1000
+			};
+		}
+		/* juts adds time to testing so remove for now
+		addCountdown(3);
+		addCountdown(2);
+		addCountdown(1);
+		*/
+
+		function get_last_trial_data(){
+			return jsPsych.data.get().last(1).values()[0];
+		}
+
+		function save_data(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses){
+			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
+			// console.log("new row saved");
+			console.log(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses);
+		}
+
+		function get_index_from_rt(rt){
+			let score = rt - lag_time; // -650 to 650
+			return Math.max(7 - Math.abs(Math.floor(score/75)), 1);
+		}
+
+		function should_do_probe(){
+			// there are only 3 ways to trigger feedback screen, Incorrect (Limit), Incorrect (Target), Miss (Caught)
+			let a = probe_type == "Incorrect (Limit)";
+			let b = probe_type == "Incorrect (Target)";
+			let c = probe_type == "Miss (Caught)";
+			return a || b || c;
+		}
+
+		function get_styling_from_rt(rt){
+			let index = get_index_from_rt(rt) - 1;
+			return '<h style="'+styling[index]+'">+</h>';
+		}
+
+		function handle_response(data){
+			let index = get_index_from_rt(data.rt)
+			if(data.response == "p"){
+				pause = true;
+				return;
+			}
+			if(data.response == "arrowup"){
+				probe_type = "Miss (Caught)";
+				return;
+			}
+
+			if(trialCount >= missLimit){
+				probe_type = "Incorrect (Limit)";
+				points += index - 30
+				return;
+			}
+
+			if(data.response == "arrowright"){
+				if(trialCount == trialTarget){
+					probe_type = "Correct (Target)";
+					task_focus = -3;
+					points += index * 2;
+					return;
+				}
+				probe_type = "Incorrect (Target)";
+				task_focus = -2;
+				points -= 5;
+				return;
+			}
+
+			if(data.response == "arrowleft"){
+				if(trialCount == trialTarget){
+					probe_type = "Incorrect (Normal)";
+					task_focus = -1;
+					points += index - 10;
+					return;
+				}
+				probe_type = "Correct (Normal)";
+				task_focus = -2;
+				points += index;
+				return;
+			}
+
+			// data.response == null
+			probe_type = "Miss (Normal)";
+			return;
+		}
+		function get_reset_trial(){
+			let reset_trial = {
+				type: jsPsychHtmlKeyboardResponse,
+				choices: ["arrowleft"],
+				stimulus: "<p>We have reset the count so start counting the next trial at 1.<br><br> When you are ready to continue, press <strong>[Left Arrow].</strong></p>",
+				on_start: function(){
+				},
+				on_finish: function() {
+				},
+			}
+			return reset_trial;
+		}
+		function create_pause_trial(){
+			let pause_trial = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: "<p style='text-align:center;font-size:100px;'>⏸️</p><p><br>Press <strong>[P]</strong> to continue.</p>",
+				choices: ["p"],
+				on_start: function(){
+				},
+				on_finish: function(data) {
+					probe_type = "Pause";
+					task_focus = "N/A";
+				},
+			}
+			return {
+				timeline: [pause_trial, get_reset_trial()],
+				conditional_function: function(){
+					return pause;
+				}
+			}
+		}
+
+		function create_probe_trial(){
+			let probe_trial = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: get_probe_stimulus,
+				choices: ["1", "2", "3", "4", "5", "6"],
+				on_start: function(){
+				},
+				on_finish: function(data) {
+					task_focus = parseInt(data.response);
+				},
+			}
+			return {
+				timeline: [probe_trial, get_reset_trial()],
+				conditional_function: should_do_probe
+			}
+		}
+
+		function get_pad_length(){
+			return 1300 - get_last_trial_data().rt;
+		}
+
+		function get_pad_stimulus(){
+			return get_styling_from_rt(get_last_trial_data().rt);
+		}
+
+		function create_pad_trial(){
+			let pad_trial = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: get_pad_stimulus,
+				choices: ["arrowleft", "arrowup", "arrowright"],
+				trial_duration: get_pad_length, // pad out trial so its 1300ms in total
+				response_ends_trial: false,
+				on_start: function(){
+				},
+				on_finish: function() {
+				},
+			}
+
+			return { // conditional node
+				timeline: [pad_trial],
+				conditional_function: function(){ return (!should_do_probe() && get_last_trial_data().response != null && !pause); },
+			}
+		}
+
+		function create_main_trial() {
+			let trial = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: "", // could use just keyboard response but ehhhhh
+				choices: ["arrowleft", "arrowup", "arrowright", "p"],
+				trial_duration: 1300, // Total duration for the trial
+				on_start: function() {
+					task_focus = "N/A";
+					// Play tick after 650ms
+					setTimeout(() => {
+						play_metronome_tick();
+					}, 650);
+					trialCount++;
+					trialNum++;
+				},
+				on_finish: function(data) {
+					handle_response(data);
+					main_response = data.response;
+					main_rt = data.rt;
+				}
+			};
+
+			return trial;
+		}
+
+		function update_trial_count(){
+			if(should_do_probe() || pause){
+				trialCount = 0;
+				pause = false;
+			}
+		}
+
+		// so start off with a timeline of 3 different trials
+		// main_trial -> pad_trial -> probe_trial
+		// main_trial lasts 1300ms unless the probe threshold is reached then it lasts for 0ms
+		// pad_trial lasts for 1300 - RT ms unless the probe thresh is reached
+		// probe_trial lasts inf if the up key is pressed, the wrong key is pressed, or if the probe thresh is reached
+		// this sub timeline of main_trial, pad_trial, probe_trial is then repeated if trialNum > TOTAL_NUM_OF_TRIALS and trialCount == trialTarget
+
+		// TODO:
+		// data saving:
+			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
+		// 
+		
+		// timeline
+		function preview_sound(e){
+			if(e.key == "s"){
+				play_metronome_tick();
+			}
+		}
+		let intro = {
+			type: jsPsychInstructions,
+			pages: instructionHTML,
+			show_clickable_nav: true,
+			on_start: function(){
+				document.addEventListener("keydown",preview_sound);
+			},
+			on_finish: function(){
+				document.removeEventListener("keydown",preview_sound);
+			}
+		}
+		let practice = {
+			timeline: [create_main_trial(), create_pad_trial(), create_probe_trial(), create_pause_trial()],
+			loop_function: function(){
+				// dont bother saving data
+				update_trial_count();
+				return !(trialNum >= num_of_practice_trials && trialCount == trialTarget);
+			},
+		}
+		let prompt = {
+			type: jsPsychHtmlKeyboardResponse,
+			stimulus: practice_trials_over_HTML,
+			choices: ["arrowleft","arrowright"],
+			on_start: function() {
+			},
+			on_finish: function(data) {
+				trialNum = 0;
+				trialCount = 0;
+				points = 0;
+			}
+		}
+		let intro_node = {
+			timeline: [
+				intro, 
+				add_countdown("practice trials starting in 3..."), add_countdown("practice trials starting in 2..."), add_countdown("practice trials starting in 1..."), add_countdown("Go!"),
+				practice, 
+				prompt
+			],
+			loop_function: function(){
+				return get_last_trial_data().response == "arrowright";
+			}
+		}
+		let trial_node = { // this is seperate so that we can conditionally loop it
+			timeline: [create_main_trial(), create_pad_trial(), create_probe_trial(), create_pause_trial()],
+			loop_function: function(){
+				let score = (main_rt - lag_time);
+				let index = get_index_from_rt(main_rt);
+				if(probe_type == "Pause"){
+					// this is a lil hacky but eh
+					score = "N/A";
+					index = 0;
+				}
+				save_data(
+					subjectID, trialNum,
+					main_response == null ? 1 : 0, score,
+					probe_type, task_focus,
+					trialCount, points,
+					index, misses
+				);
+				update_trial_count();
+				return !(trialNum >= TOTAL_NUM_OF_TRIALS && trialCount == trialTarget);
+			},
+		}
+		let main_timeline = [
+			intro_node,
+			add_countdown("main trials starting in 3..."), add_countdown("main trials starting in 2..."), add_countdown("main trials starting in 1..."), add_countdown("Go!"),
+			trial_node,
+		]
+
+		if(debug){
+			main_timeline = [trial_node]; // skip intro and practice trials
+		}
+
+		// Initialize JsPsych instance
+		const jsPsych = initJsPsych({
+			on_finish: function() {
+				console.log("done");
+			}
+		});
+
+		// Start the experiment
+		jsPsych.run(main_timeline);
+	</script>
+</body>
+
+</html>
