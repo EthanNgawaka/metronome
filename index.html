@@ -6,6 +6,7 @@
     <script src="js/external/plugin-preload.js"></script>
     <script src="js/external/plugin-html-keyboard-response.js"></script>
 	<script src="https://unpkg.com/@jspsych/plugin-instructions@1.1.4"></script>
+	<script src="https://unpkg.com/@jspsych-contrib/plugin-pipe@0.3"></script>
 
     <link rel="stylesheet" href="css/jspsych.css">
     <style>
@@ -58,6 +59,12 @@
 			"hitvalue": [],
 			"misses": [],
 		}
+		// Initialize JsPsych instance
+		const jsPsych = initJsPsych({
+			on_finish: function() {
+				console.log("done");
+			}
+		});
 
 		function save_data(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses){
 			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
@@ -88,38 +95,12 @@
 			}
 
 			let csv = header + rows.join('\n');
+			console.log(csv);
+			console.log(jsPsych.data.get().csv());
 			return csv;
 		}
 
-		// https://softdev.ppls.ed.ac.uk/online_experiments/06_data.html //
-		// so nice i didnt have to do this myself
-		async function fetch_with_retry(...args) {
-			let count = 0;
-			while(count < 3) {
-				try {
-				let response = await fetch(...args);
-				if (response.status !== 200) {
-					throw new Error("Didn't get 200 Success");
-				}
-				return response;
-				} catch(error) {
-				console.log(error);
-				}
-				count++;
-				await new Promise(x => setTimeout(x, 250));
-			}
-			throw new Error("Too many retries");
-		}
-		async function save_data_to_file(name, data_in){
-			var url = 'save_data.php';
-			var data_to_send = {filename: name, filedata: data_in};
-			await fetch_with_retry(url, {
-				method: 'POST',
-				body: JSON.stringify(data_to_send),
-				headers: new Headers({
-						'Content-Type': 'application/json'
-				})
-			});
+		function save_data_to_file(name, data_in){
 		}
 		// ----------------------------------------------------------- //
 
@@ -539,17 +520,22 @@
 			trial_node,
 		]
 
-		if(debug){
-			main_timeline = [trial_node]; // skip intro and practice trials
+		function get_data_to_send(){
+			return convert_to_csv(data);
 		}
 
-		// Initialize JsPsych instance
-		const jsPsych = initJsPsych({
-			on_finish: async function() {
-				save_data_to_file("MT-"+subjectID+".csv", convert_to_csv(data));
-				console.log("done");
-			}
-		});
+		let filename = subjectID+".csv"
+		let send_data = {
+			type: jsPsychPipe,
+			action: "save",
+			experiment_id: "s3NBv0xkt5ig",
+			filename: filename,
+			data_string: get_data_to_send,
+		}
+
+		if(debug){
+			main_timeline = [trial_node, send_data]; // skip intro and practice trials
+		}
 
 		// Start the experiment
 		jsPsych.run(main_timeline);
