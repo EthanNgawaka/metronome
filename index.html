@@ -46,6 +46,82 @@
 		let num_of_practice_trials = 30;
 		let pause = false;
 		let tick_timeoutid = null;
+		let data = {
+			"subject": [],
+			"trial": [],
+			"omission": [],
+			"RT_from_metronome": [],
+			"probeType": [],
+			"TaskFocus": [],
+			"currentCount": [],
+			"points": [],
+			"hitvalue": [],
+			"misses": [],
+		}
+
+		function save_data(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses){
+			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
+			console.log(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses);
+
+			data["subject"].push(subjectID);
+			data["trial"].push(trialNum);
+			data["omission"].push(omission);
+			data["RT_from_metronome"].push(RTFromMetronome);
+			data["probeType"].push(probeType);
+			data["TaskFocus"].push(taskFocus);
+			data["currentCount"].push(currCount);
+			data["points"].push(points);
+			data["hitvalue"].push(hitValue);
+			data["misses"].push(misses);
+		}
+
+		function convert_to_csv(data){
+			let cols = Object.keys(data);
+			let header = cols.join(',') + '\n';
+
+			let numRows = data[cols[0]].length; // all cols have same len
+			let rows = [];
+
+			for (let i = 0; i < numRows; i++) {
+				let row = cols.map(col => data[col][i]);
+				rows.push(row.join(','));
+			}
+
+			let csv = header + rows.join('\n');
+			return csv;
+		}
+
+		// https://softdev.ppls.ed.ac.uk/online_experiments/06_data.html //
+		// so nice i didnt have to do this myself
+		async function fetch_with_retry(...args) {
+			let count = 0;
+			while(count < 3) {
+				try {
+				let response = await fetch(...args);
+				if (response.status !== 200) {
+					throw new Error("Didn't get 200 Success");
+				}
+				return response;
+				} catch(error) {
+				console.log(error);
+				}
+				count++;
+				await new Promise(x => setTimeout(x, 250));
+			}
+			throw new Error("Too many retries");
+		}
+		async function save_data_to_file(name, data_in){
+			var url = 'save_data.php';
+			var data_to_send = {filename: name, filedata: data_in};
+			await fetch_with_retry(url, {
+				method: 'POST',
+				body: JSON.stringify(data_to_send),
+				headers: new Headers({
+						'Content-Type': 'application/json'
+				})
+			});
+		}
+		// ----------------------------------------------------------- //
 
 		// Miss (Caught) = 10
 		// Incorrect (Limit) = 10
@@ -156,7 +232,7 @@
 			return "<p>" + probe_reasons[probe_type] + probe_stimulus;
 		}
 
-		let debug = false;
+		let debug = true;
 
 		if(debug){
 			trialTarget = 10;
@@ -199,13 +275,6 @@
 		function get_last_trial_data(){
 			return jsPsych.data.get().last(1).values()[0];
 		}
-
-		function save_data(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses){
-			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
-			// console.log("new row saved");
-			console.log(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses);
-		}
-
 		function get_index_from_rt(rt){
 			let score = rt - lag_time; // -650 to 650
 			return Math.max(7 - Math.abs(Math.floor(score/75)), 1);
@@ -476,7 +545,8 @@
 
 		// Initialize JsPsych instance
 		const jsPsych = initJsPsych({
-			on_finish: function() {
+			on_finish: async function() {
+				save_data_to_file("MT-"+subjectID+".csv", convert_to_csv(data));
 				console.log("done");
 			}
 		});
