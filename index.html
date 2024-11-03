@@ -412,6 +412,7 @@
 			loop_function: function(){
 				// dont bother saving data
 				update_trial_count();
+				probe_type = "";
 				return !(trialNum >= num_of_practice_trials && trialCount == trialTarget);
 			},
 		}
@@ -456,6 +457,7 @@
 					index, misses
 				);
 				update_trial_count();
+				probe_type = "";
 				return !(trialNum >= TOTAL_NUM_OF_TRIALS && trialCount == trialTarget);
 			},
 		}
