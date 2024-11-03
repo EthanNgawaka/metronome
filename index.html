@@ -45,6 +45,7 @@
 		let main_rt = null;
 		let num_of_practice_trials = 30;
 		let pause = false;
+		let tick_timeoutid = null;
 
 		// Miss (Caught) = 10
 		// Incorrect (Limit) = 10
@@ -288,6 +289,7 @@
 				stimulus: "<p style='text-align:center;font-size:100px;'>⏸️</p><p><br>Press <strong>[P]</strong> to continue.</p>",
 				choices: ["p"],
 				on_start: function(){
+					clearTimeout(tick_timeoutid);
 				},
 				on_finish: function(data) {
 					probe_type = "Pause";
@@ -308,6 +310,7 @@
 				stimulus: get_probe_stimulus,
 				choices: ["1", "2", "3", "4", "5", "6"],
 				on_start: function(){
+					clearTimeout(tick_timeoutid);
 				},
 				on_finish: function(data) {
 					task_focus = parseInt(data.response);
@@ -355,7 +358,7 @@
 				on_start: function() {
 					task_focus = "N/A";
 					// Play tick after 650ms
-					setTimeout(() => {
+					tick_timeoutid = setTimeout(() => {
 						play_metronome_tick();
 					}, 650);
 					trialCount++;
