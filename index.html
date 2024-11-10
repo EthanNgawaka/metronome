@@ -7,6 +7,9 @@
     <script src="js/external/plugin-html-keyboard-response.js"></script>
 	<script src="https://unpkg.com/@jspsych/plugin-instructions@1.1.4"></script>
 	<script src="https://unpkg.com/@jspsych-contrib/plugin-pipe@0.3"></script>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="css/jspsych.css">
     <style>
@@ -19,7 +22,20 @@
 		body{
 			background-color:black;
 		}
-		
+		.plus{
+		  font-family: "Montserrat", sans-serif;
+		  font-size: 150px;
+		  font-weight: bold;
+		  position: absolute;
+		  transform: translate(-50%, -50%);
+		}
+		.circle{
+		  font-family: "Montserrat", sans-serif;
+		  font-size: 300px;
+		  font-weight: bold;
+		  position: absolute;
+		  transform: translate(-50%, -50%);
+		}
 		strong{
 			color:white;
 			font-weight:bold;
@@ -47,6 +63,7 @@
 		let pause = false;
 		let tick_timeoutid = null;
 		let pauses = 0;
+		let missed_last_target = false;
 		let data = {
 			"subject": [],
 			"trial": [],
@@ -225,13 +242,13 @@
 		}
 
 		let styling = [
-			"font-weight:bold;font-size:200px;color:red;",
-			"font-weight:bold;font-size:200px;color:orange;",
-			"font-weight:bold;font-size:200px;color:yellow;",
-			"font-weight:bold;font-size:200px;color:green;",
-			"font-weight:bold;font-size:200px;color:lightgreen;",
-			"font-weight:bold;font-size:200px;color:cyan;",
-			"font-weight:bold;font-size:200px;color:magenta;",
+			"color:red;",
+			"color:orange;",
+			"color:yellow;",
+			"color:green;",
+			"color:lightgreen;",
+			"color:cyan;",
+			"color:magenta;",
 		];
 
 		function play_metronome_tick() {
@@ -273,7 +290,7 @@
 
 		function get_styling_from_rt(rt){
 			let index = get_index_from_rt(rt) - 1;
-			return '<h style="'+styling[index]+'">+</h>';
+			return '<h style="'+styling[index]+'" class="plus">+</h>';
 		}
 
 		function handle_response(data){
@@ -287,9 +304,10 @@
 				return;
 			}
 
-			if(trialCount >= missLimit){
+			if(trialCount >= missLimit && missed_last_target){
 				probe_type = "Incorrect (Limit)";
 				points += index - 30
+				missed_last_target = false;
 				return;
 			}
 
@@ -298,6 +316,7 @@
 					probe_type = "Correct (Target)";
 					task_focus = -3;
 					points += index * 2;
+					missed_last_target = false;
 					return;
 				}
 				probe_type = "Incorrect (Target)";
@@ -311,6 +330,7 @@
 					probe_type = "Incorrect (Normal)";
 					task_focus = -1;
 					points += index - 10;
+					missed_last_target = true;
 					return;
 				}
 				probe_type = "Correct (Normal)";
@@ -381,7 +401,13 @@
 		}
 
 		function get_pad_stimulus(){
-			return get_styling_from_rt(get_last_trial_data().rt);
+			let rt = get_last_trial_data().rt;
+			let stim = get_styling_from_rt(rt);
+			if(trialCount == trialTarget && !missed_last_target){
+				let index = get_index_from_rt(rt) - 1;
+				stim += '<h style="'+styling[index]+'" class="circle">O</h>';
+			}
+			return stim;
 		}
 
 		function create_pad_trial(){
