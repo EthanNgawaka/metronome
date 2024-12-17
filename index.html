@@ -260,12 +260,23 @@
 
 		const timeline = [];
 
-		function add_countdown(n){
+		function add_countdown(n, l=1300){
 			return {
 				type: jsPsychHtmlKeyboardResponse,
 				stimulus: '<p>'+n+'<p>',
 				response_ends_trial: false,
-				trial_duration:1300
+				trial_duration:l
+			};
+		}
+		function add_countdown_pad(){
+			return {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: '',
+				response_ends_trial: false,
+				on_start: function(){
+					leadup_ticks();
+				},
+				trial_duration:650
 			};
 		}
 		function leadup_ticks(){
@@ -522,7 +533,6 @@
 				document.addEventListener("keydown",preview_sound);
 			},
 			on_finish: function(){
-				leadup_ticks();
 				document.removeEventListener("keydown",preview_sound);
 			}
 		}
@@ -551,7 +561,7 @@
 		let intro_node = {
 			timeline: [
 				intro, 
-				add_countdown("practice trials starting in 3..."), add_countdown("practice trials starting in 2..."), add_countdown("practice trials starting in 1..."), add_countdown("Go!"),
+				add_countdown_pad(), add_countdown("practice trials starting in 3..."), add_countdown("practice trials starting in 2..."), add_countdown("practice trials starting in 1..."), add_countdown("Go!", 650),
 				practice, 
 				prompt
 			],
