@@ -76,6 +76,7 @@
 			"hitvalue": [],
 			"misses": [],
 		}
+		
 		// Initialize JsPsych instance
 		const jsPsych = initJsPsych({
 			on_finish: function() {
@@ -84,6 +85,7 @@
 		});
 		const subjectID = jsPsych.randomization.randomID(10); // eventually replaced by qualtrics input
 		console.log("subjectID: " + subjectID);
+
 
 		function save_data(subjectID, trialNum, omission, RTFromMetronome, probeType, taskFocus, currCount, points, hitValue, misses){
 			// id, trial num, missed?, rt (-650, 650), probeType, taskFocus, trial Count, points, hitVal, misses
@@ -562,11 +564,17 @@
 				return !(trialNum >= TOTAL_NUM_OF_TRIALS && trialCount == trialTarget);
 			},
 		}
+		let preload = {
+			type: jsPsychPreload,
+			trials: [trial_node]
+		}
 		let main_timeline = [
 			intro_node,
+			preload,
 			add_countdown("main trials starting in 3..."), add_countdown("main trials starting in 2..."), add_countdown("main trials starting in 1..."), add_countdown("Go!"),
 			trial_node,
 		]
+
 
 		function get_data_to_send(){
 			return convert_to_csv(data);
