@@ -265,8 +265,22 @@
 				type: jsPsychHtmlKeyboardResponse,
 				stimulus: '<p>'+n+'<p>',
 				response_ends_trial: false,
-				trial_duration:1000
+				trial_duration:1300
 			};
+		}
+		function leadup_ticks(){
+			tick_timeoutid = setTimeout(() => {
+				play_metronome_tick();
+			}, 1*650);
+			tick_timeoutid = setTimeout(() => {
+				play_metronome_tick();
+			}, 650+1300);
+			tick_timeoutid = setTimeout(() => {
+				play_metronome_tick();
+			}, 650+2*1300);
+			tick_timeoutid = setTimeout(() => {
+				play_metronome_tick();
+			}, 650 + 3*1300);
 		}
 		/* juts adds time to testing so remove for now
 		addCountdown(3);
@@ -508,6 +522,7 @@
 				document.addEventListener("keydown",preview_sound);
 			},
 			on_finish: function(){
+				leadup_ticks();
 				document.removeEventListener("keydown",preview_sound);
 			}
 		}
