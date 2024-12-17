@@ -296,55 +296,57 @@
 		}
 
 		function handle_response(data){
-			let index = get_index_from_rt(data.rt)
-			if(data.response == "p"){
-				pause = true;
-				return;
-			}
-			if(data.response == "arrowup"){
-				probe_type = "Miss (Caught)";
-				return;
-			}
+			try{
+				let index = get_index_from_rt(data.rt)
+				if(data.response == "p"){
+					pause = true;
+					return;
+				}
+				if(data.response == "arrowup"){
+					probe_type = "Miss (Caught)";
+					return;
+				}
 
-			if(trialCount >= missLimit && missed_last_target){
-				probe_type = "Incorrect (Limit)";
-				points += index - 30
-				missed_last_target = false;
-				return;
-			}
-
-			if(data.response == "arrowright"){
-				if(trialCount == trialTarget){
-					probe_type = "Correct (Target)";
-					task_focus = -3;
-					points += index * 2;
+				if(trialCount >= missLimit && missed_last_target){
+					probe_type = "Incorrect (Limit)";
+					points += index - 30
 					missed_last_target = false;
 					return;
 				}
-				probe_type = "Incorrect (Target)";
-				task_focus = -2;
-				points -= 5;
-				return;
-			}
 
-			if(data.response == "arrowleft"){
-				if(trialCount == trialTarget){
-					probe_type = "Incorrect (Normal)";
-					task_focus = -1;
-					points += index - 10;
-					missed_last_target = true;
+				if(data.response == "arrowright"){
+					if(trialCount == trialTarget){
+						probe_type = "Correct (Target)";
+						task_focus = -3;
+						points += index * 2;
+						missed_last_target = false;
+						return;
+					}
+					probe_type = "Incorrect (Target)";
+					task_focus = -2;
+					points -= 5;
 					return;
 				}
-				probe_type = "Correct (Normal)";
-				task_focus = -2;
-				points += index;
-				return;
-			}
 
-			// data.response == null
-			misses += 1;
-			probe_type = "Miss (Normal)";
-			return;
+				if(data.response == "arrowleft"){
+					if(trialCount == trialTarget){
+						probe_type = "Incorrect (Normal)";
+						task_focus = -1;
+						points += index - 10;
+						missed_last_target = true;
+						return;
+					}
+					probe_type = "Correct (Normal)";
+					task_focus = -2;
+					points += index;
+					return;
+				}
+
+				// data.response == null
+				misses += 1;
+				probe_type = "Miss (Normal)";
+				return;
+			}catch{}
 		}
 		function get_reset_trial(){
 			let reset_trial = {
@@ -389,7 +391,9 @@
 					clearTimeout(tick_timeoutid);
 				},
 				on_finish: function(data) {
-					task_focus = parseInt(data.response);
+					try{
+						task_focus = parseInt(data.response);
+					}catch{}
 				},
 			}
 			return {
@@ -399,17 +403,24 @@
 		}
 
 		function get_pad_length(){
-			return 1300 - get_last_trial_data().rt;
+			try{
+				return 1300 - get_last_trial_data().rt;
+			}catch{
+				return 1300
+			}
 		}
 
 		function get_pad_stimulus(){
-			let rt = get_last_trial_data().rt;
-			let stim = get_styling_from_rt(rt);
-			if(trialCount == trialTarget && !missed_last_target){
-				let index = get_index_from_rt(rt) - 1;
-				stim += '<h style="'+styling[index]+'" class="circle">O</h>';
-			}
+			try{
+				let rt = get_last_trial_data().rt;
+				let stim = get_styling_from_rt(rt);
+				if(trialCount == trialTarget && !missed_last_target){
+					let index = get_index_from_rt(rt) - 1;
+					stim += '<h style="'+styling[index]+'" class="circle">O</h>';
+				}
 			return stim;
+			}catch{
+			}
 		}
 
 		function create_pad_trial(){
@@ -427,7 +438,13 @@
 
 			return { // conditional node
 				timeline: [pad_trial],
-				conditional_function: function(){ return (!should_do_probe() && get_last_trial_data().response != null && !pause); },
+				conditional_function: function(){
+					try{
+						return (!should_do_probe() && get_last_trial_data().response != null && !pause);
+					}catch{
+						true
+					}
+				},
 			}
 		}
 
@@ -447,9 +464,11 @@
 					trialNum++;
 				},
 				on_finish: function(data) {
-					handle_response(data);
-					main_response = data.response;
-					main_rt = data.rt;
+					try{
+						handle_response(data);
+						main_response = data.response;
+						main_rt = data.rt;
+					}catch{}
 				}
 			};
 
@@ -564,17 +583,32 @@
 				return !(trialNum >= TOTAL_NUM_OF_TRIALS && trialCount == trialTarget);
 			},
 		}
+
+		let reset = {
+			type: jsPsychHtmlKeyboardResponse,
+			stimulus: practice_trials_over_HTML,
+			choices: ["arrowleft","arrowright"],
+			trial_duration:0,
+			on_finish: function(data) {
+				trialNum = 0;
+				trialCount = 0;
+				points = 0;
+				misses = 0;
+				data = {}
+			}
+		}
+
 		let preload = {
 			type: jsPsychPreload,
-			trials: [trial_node]
+			trials: [trial_node, reset]
 		}
+
 		let main_timeline = [
 			intro_node,
-			preload,
 			add_countdown("main trials starting in 3..."), add_countdown("main trials starting in 2..."), add_countdown("main trials starting in 1..."), add_countdown("Go!"),
+			preload,
 			trial_node,
 		]
-
 
 		function get_data_to_send(){
 			return convert_to_csv(data);
