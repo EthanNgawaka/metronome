@@ -444,6 +444,7 @@
 				if(trialCount == trialTarget && !missed_last_target){
 					let index = get_index_from_rt(rt) - 1;
 					stim += '<h style="'+styling[index]+'" class="circle">O</h>';
+					trialCount = 0;
 				}
 			return stim;
 			}catch{
