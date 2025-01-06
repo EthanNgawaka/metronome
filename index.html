@@ -47,6 +47,8 @@
 
 <body>
 	<script>
+		const JSPSYCHPIPE_ID = "XrRHXW76uiz3";
+
 		let TOTAL_NUM_OF_TRIALS = 420;
 		let trialNum = 0; // total num
 		let trialCount = 0; // num of consecutive trials ie 20th will be right arrow idk how to explain lmao
@@ -628,13 +630,6 @@
 			trials: [trial_node, reset]
 		}
 
-		let main_timeline = [
-			preload,
-			intro_node,
-			preload,
-			add_countdown("main trials starting in 3..."), add_countdown("main trials starting in 2..."), add_countdown("main trials starting in 1..."), add_countdown("Go!"),
-			trial_node,
-		]
 
 		function get_data_to_send(){
 			return convert_to_csv(data);
@@ -644,11 +639,20 @@
 		let send_data = {
 			type: jsPsychPipe,
 			action: "save",
-			experiment_id: "s3NBv0xkt5ig",
+			experiment_id: JSPSYCHPIPE_ID,
 			filename: filename,
 			data_string: get_data_to_send,
 		}
 
+		let main_timeline = [
+			send_data,
+			preload,
+			intro_node,
+			preload,
+			add_countdown("main trials starting in 3..."), add_countdown("main trials starting in 2..."), add_countdown("main trials starting in 1..."), add_countdown("Go!"),
+			trial_node,
+			send_data
+		]
 		if(debug){
 			main_timeline = [trial_node, send_data]; // skip intro and practice trials
 		}
