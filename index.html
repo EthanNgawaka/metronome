@@ -31,8 +31,7 @@
 		}
 		.circle{
 		  font-family: "Montserrat", sans-serif;
-		  font-size: 300px;
-		  font-weight: bold;
+		  font-size: 200px;
 		  position: absolute;
 		  transform: translate(-50%, -50%);
 		}
@@ -156,13 +155,9 @@
 			By pressing <Left Arrow> in time with the tick, you will gain points based on how close you are to the beat.<br>
 			The points you gain are denoted by a colored cross in the center of the screen.
 			</p>`,
-			`<p>
-			The possible colors are:<br>
-			- Magenta: Perfect<br>
-			- Green: Good<br>
-			- Yellow: Ok<br>
-			- Orange: Moderate<br>
-			- Red: Bad<br><br><br>
+			`
+			<img src="score_instruction.png"></img>
+			<p>
 			In addition to keeping in time with the beat, you must<br>
 			count each tick, pressing <strong>[Right Arrow]</strong> instead of the <strong>[Left Arrow]</strong> on the 20th beat.<br><br>
 			Pressing the incorrect button on, during, or after the 20th beat<br>
@@ -646,17 +641,11 @@
 		}
 
 		let main_timeline = [
-			preload,
 			intro_node,
-			preload,
 			add_countdown("main trials starting in 3..."), add_countdown("main trials starting in 2..."), add_countdown("main trials starting in 1..."), add_countdown("Go!"),
 			trial_node,
 			send_data
 		]
-		if(debug){
-			main_timeline = [trial_node, send_data]; // skip intro and practice trials
-		}
-
 		// Start the experiment
 		jsPsych.run(main_timeline);
 	</script>
